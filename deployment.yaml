@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+  authenticationDB:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 10
+    volumes:
+      - authDBData:/var/lib/mysql
+    networks:
+      - mynet
+  authenticationDBMigration:
+    image: authenticationdbmigration
+    environment:
+      - DATABASE_URL=authenticationDB
+    depends_on:
+      authenticationDB:
+        condition: service_healthy
+    networks:
+      - mynet
+    build:
+      context: .
+      dockerfile: authenticationDBMigration.dockerfile
+  authentication:
+    image: authentication
+    environment:
+      - DATABASE_URL=authenticationDB
+    depends_on:
+      - authenticationDBMigration
+    ports:
+      - 5000:5000
+    networks:
+      - mynet
+    build:
+      context: .
+      dockerfile: authentication.dockerfile
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080
+    networks:
+      - mynet
+
+volumes:
+  authDBData:
+
+networks:
+  mynet:
